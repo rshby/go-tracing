@@ -2,6 +2,7 @@ package database
 
 import (
 	"github.com/sirupsen/logrus"
+	"go-tracing/database/migration"
 	"go-tracing/internal/config"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -22,6 +23,8 @@ func InitializeMysqlDatabase() (*gorm.DB, func()) {
 	}
 
 	MysqlDB = db
+
+	migration.Migration(MysqlDB)
 	return MysqlDB, func() {
 		s, _ := db.DB()
 		_ = s.Close()

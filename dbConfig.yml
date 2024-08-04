@@ -1,0 +1,5 @@
+local:
+  dialect: mysql
+  datasource : root:root@tcp(localhost:3306)/go_tracing?charset=utf8mb4&parseTime=True&loc=UTC
+  dir : database/migrationSchema
+  table: migrations
