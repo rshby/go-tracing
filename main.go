@@ -113,3 +113,11 @@ func initTracerApp(ctx context.Context, serviceName string) (*trace.TracerProvid
 		_ = tracerProvideer.Shutdown(ctx)
 	}
 }
+
+func New(ctx context.Context, name string) (context.Context, trace2.Span) {
+	return t.Start(ctx, name)
+}
+
+func NewSpan() {
+
+}
