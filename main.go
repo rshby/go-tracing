@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -8,10 +9,22 @@ import (
 	"go-tracing/internal/config"
 	"go-tracing/internal/http/router"
 	"go-tracing/internal/logger"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	trace2 "go.opentelemetry.io/otel/trace"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
+	"time"
+)
+
+var (
+	t trace2.Tracer
 )
 
 func init() {
@@ -23,6 +36,10 @@ func main() {
 	defer mysqlCloser()
 	logrus.Info(mysqlDB)
 
+	traceProvider, shutdownTrace := initTracerApp(context.Background(), "go-traciing")
+	defer shutdownTrace()
+
+	t = traceProvider.Tracer("go-tracing")
 	app := gin.Default()
 
 	// router
@@ -65,4 +82,34 @@ func main() {
 	}(wg)
 
 	wg.Wait()
+}
+
+func newTraceExporter(ctx context.Context) (trace.SpanExporter, error) {
+	exporter, err := otlptrace.New(ctx, otlptracehttp.NewClient(
+		otlptracehttp.WithEndpoint("localhost:4318"),
+		otlptracehttp.WithHeaders(map[string]string{
+			"content-type": "application/json",
+		}),
+		otlptracehttp.WithInsecure()))
+
+	return exporter, err
+}
+
+func newTraceProvider(exporter trace.SpanExporter, serviceName string) *trace.TracerProvider {
+	traceProvider := trace.NewTracerProvider(
+		trace.WithBatcher(exporter, trace.WithBatchTimeout(1*time.Second)),
+		trace.WithResource(resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceNameKey.String(serviceName))))
+
+	return traceProvider
+}
+
+func initTracerApp(ctx context.Context, serviceName string) (*trace.TracerProvider, func()) {
+	exporter, _ := newTraceExporter(ctx)
+
+	tracerProvideer := newTraceProvider(exporter, serviceName)
+	otel.SetTracerProvider(tracerProvideer)
+
+	return tracerProvideer, func() {
+		_ = tracerProvideer.Shutdown(ctx)
+	}
 }
