@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: "jaeger"
+    restart: on-failure
+    ports:
+      - 16686:16686
+      - 4318:4318
+      - 6831:6831
