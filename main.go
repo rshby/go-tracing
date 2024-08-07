@@ -92,6 +92,8 @@ func newTraceExporter(ctx context.Context) (trace.SpanExporter, error) {
 		}),
 		otlptracehttp.WithInsecure()))
 
+	_, _ = otlptracehttp.New(ctx, otlptracehttp.WithEndpoint(""), otlptracehttp.WithCompression(otlptracehttp.GzipCompression))
+
 	return exporter, err
 }
 
@@ -112,12 +114,4 @@ func initTracerApp(ctx context.Context, serviceName string) (*trace.TracerProvid
 	return tracerProvideer, func() {
 		_ = tracerProvideer.Shutdown(ctx)
 	}
-}
-
-func New(ctx context.Context, name string) (context.Context, trace2.Span) {
-	return t.Start(ctx, name)
-}
-
-func NewSpan() {
-
 }
