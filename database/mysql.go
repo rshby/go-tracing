@@ -2,6 +2,7 @@ package database
 
 import (
 	"github.com/sirupsen/logrus"
+	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"go-tracing/database/migration"
 	"go-tracing/internal/config"
 	"gorm.io/driver/mysql"
@@ -23,6 +24,7 @@ func InitializeMysqlDatabase() (*gorm.DB, func()) {
 	}
 
 	MysqlDB = db
+	MysqlDB.Use(otelgorm.NewPlugin())
 
 	migration.Migration(MysqlDB)
 	return MysqlDB, func() {

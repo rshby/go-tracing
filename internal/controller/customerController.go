@@ -1,12 +1,14 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"go-tracing/internal/http/httpresponse"
 	serviceDto "go-tracing/internal/service/dto"
 	serviceInterfaces "go-tracing/internal/service/interfaces"
 	"go-tracing/internal/utils/helper"
+	"go-tracing/otel"
 )
 
 type CustomerController struct {
@@ -40,14 +42,19 @@ func (controller *CustomerController) Create(c *gin.Context) {
 }
 
 func (controller *CustomerController) GetByID(c *gin.Context) {
+
 	//logger := logrus.WithContext(c)
 
 	// get from params
 	id := helper.ExpectNumber[uint](c.Param("id"))
 
-	customer, httpError := controller.customerService.GetByID(c.Request.Context(), id)
+	ctx, span := otel.OtelApp.Start(c, fmt.Sprintf("v1/customer/%d", id))
+	defer span.End()
+
+	customer, httpError := controller.customerService.GetByID(ctx, id)
 	if httpError != nil {
 		//logger.Error(httpError)
+		span.RecordError(httpError)
 		httpresponse.ResponseError(c, httpError)
 		return
 	}

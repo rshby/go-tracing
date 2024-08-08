@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/sirupsen/logrus"
 	"reflect"
+	"runtime"
 	"strconv"
 	"time"
 )
@@ -44,4 +45,15 @@ func ExpectNumber[T int | int64 | uint | float32 | float64](v any) T {
 	default:
 		return result
 	}
+}
+
+func MyCaller(skip int) string {
+	pc, _, _, ok := runtime.Caller(skip)
+	details := runtime.FuncForPC(pc)
+
+	if ok && details != nil {
+		return details.Name()
+	}
+
+	return "not know"
 }

@@ -7,6 +7,7 @@ import (
 	"go-tracing/database/model"
 	"go-tracing/internal/repository/interfaces"
 	"go-tracing/internal/utils/helper"
+	"go-tracing/otel"
 	"gorm.io/gorm"
 )
 
@@ -39,6 +40,9 @@ func (c *customerRepository) Create(ctx context.Context, tx *gorm.DB, input *mod
 }
 
 func (c *customerRepository) GetByID(ctx context.Context, ID uint) (*model.Customer, error) {
+	ctx, span := otel.OtelApp.Start(ctx, helper.MyCaller(1))
+	defer span.End()
+
 	logger := logrus.WithContext(ctx).WithField("id", ID)
 
 	var customer model.Customer

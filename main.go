@@ -10,24 +10,21 @@ import (
 	"go-tracing/internal/http/router"
 	"go-tracing/internal/logger"
 	"go-tracing/otel"
-	trace2 "go.opentelemetry.io/otel/trace"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 )
 
-var (
-	t trace2.Tracer
-)
-
 func init() {
 	logger.SetupLogger()
 
-	otel.InitTracerApp(context.Background(), "go-tracing")
 }
 
 func main() {
+	_, closerTracer := otel.InitTracerApp(context.Background(), "go-tracing")
+	defer closerTracer()
+
 	mysqlDB, mysqlCloser := database.InitializeMysqlDatabase()
 	defer mysqlCloser()
 	logrus.Info(mysqlDB)

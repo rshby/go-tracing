@@ -2,9 +2,12 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"go-tracing/internal/controller"
 	"go-tracing/internal/repository"
 	"go-tracing/internal/service"
+	"go-tracing/otel"
+	"net/http"
 )
 
 type router struct {
@@ -24,6 +27,18 @@ func (r *router) SetEnpoint() {
 		customerGroup := apiV1.Group("/customer")
 		{
 			customerGroup.GET("/:id", customerController.GetByID)
+			customerGroup.GET("/ok", func(c *gin.Context) {
+				ctx, span := otel.OtelApp.Start(c.Request.Context(), "controller ok")
+				defer span.End()
+
+				logrus.Info(ctx)
+
+				c.Status(http.StatusOK)
+				c.JSON(http.StatusOK, gin.H{
+					"status_code": http.StatusOK,
+					"message":     "success cek",
+				})
+			})
 		}
 	}
 }
