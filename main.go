@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"go-tracing/database"
 	"go-tracing/internal/config"
+	"go-tracing/internal/http/middleware"
 	"go-tracing/internal/http/router"
 	"go-tracing/internal/logger"
 	"go-tracing/otel"
@@ -30,6 +31,7 @@ func main() {
 	logrus.Info(mysqlDB)
 
 	app := gin.Default()
+	app.Use(middleware.TraceMiddleware())
 
 	// router
 	router.NewRouter(&app.RouterGroup)

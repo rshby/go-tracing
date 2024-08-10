@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"go-tracing/internal/http/httpresponse"
@@ -42,14 +41,12 @@ func (controller *CustomerController) Create(c *gin.Context) {
 }
 
 func (controller *CustomerController) GetByID(c *gin.Context) {
-
+	ctx, span := otel.OtelApp.Start(c.Request.Context(), helper.MyCaller(1))
+	defer span.End()
 	//logger := logrus.WithContext(c)
 
 	// get from params
 	id := helper.ExpectNumber[uint](c.Param("id"))
-
-	ctx, span := otel.OtelApp.Start(c, fmt.Sprintf("v1/customer/%d", id))
-	defer span.End()
 
 	customer, httpError := controller.customerService.GetByID(ctx, id)
 	if httpError != nil {
