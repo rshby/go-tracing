@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/sirupsen/logrus"
+	"go-tracing/internal/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
@@ -23,6 +25,7 @@ var (
 	OtelApp = &OtelTrace{}
 )
 
+// NewTraceExporter is method to create exporter jaeger
 func NewTraceExporter(ctx context.Context) (trace.SpanExporter, error) {
 	exporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithEndpoint("localhost:4318"),
@@ -35,6 +38,11 @@ func NewTraceExporter(ctx context.Context) (trace.SpanExporter, error) {
 	return exporter, err
 }
 
+// NewConsoleExporter is method to create exporter console
+func NewConsoleExporter(ctx context.Context) (trace.SpanExporter, error) {
+	return stdouttrace.New(stdouttrace.WithPrettyPrint())
+}
+
 func NewTraceProvider(exporter trace.SpanExporter, serviceName string) *trace.TracerProvider {
 	traceProvider := trace.NewTracerProvider(
 		trace.WithBatcher(exporter, trace.WithBatchTimeout(1*time.Second)),
@@ -44,10 +52,22 @@ func NewTraceProvider(exporter trace.SpanExporter, serviceName string) *trace.Tr
 	return traceProvider
 }
 
+// InitTracerApp is method to
 func InitTracerApp(ctx context.Context, serviceName string) (*trace.TracerProvider, func()) {
-	exporter, err := NewTraceExporter(ctx)
-	if err != nil {
-		logrus.Fatalf("failed to get exporter : %s", err.Error())
+	var exporter trace.SpanExporter
+	switch config.OtelExporter() {
+	case "console":
+		var err error
+		exporter, err = NewConsoleExporter(ctx)
+		if err != nil {
+			logrus.Fatalf("failed to get console exporter : %s", err.Error())
+		}
+	case "jaeger":
+		var err error
+		exporter, err = NewTraceExporter(ctx)
+		if err != nil {
+			logrus.Fatalf("failed to get exporter : %s", err.Error())
+		}
 	}
 
 	tracerProvideer := NewTraceProvider(exporter, serviceName)

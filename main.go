@@ -14,7 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
+	"time"
 )
 
 func init() {
@@ -24,7 +24,6 @@ func init() {
 
 func main() {
 	_, closerTracer := otel.InitTracerApp(context.Background(), "go-tracing")
-	defer closerTracer()
 
 	mysqlDB, mysqlCloser := database.InitializeMysqlDatabase()
 	defer mysqlCloser()
@@ -42,8 +41,9 @@ func main() {
 	}
 
 	var (
-		wg         = &sync.WaitGroup{}
+		chanExit   = make(chan bool)
 		chanSignal = make(chan os.Signal)
+		chanErr    = make(chan error)
 	)
 
 	ctx, span := otel.OtelApp.Start(context.Background(), "")
@@ -53,29 +53,49 @@ func main() {
 
 	signal.Notify(chanSignal, os.Interrupt)
 
-	wg.Add(1)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-
+	go func() {
 		for {
 			select {
 			case <-chanSignal:
+				logrus.WithContext(ctx).Info("chan signal receive")
+				timeoutCtx, cancelFunc := context.WithTimeout(ctx, 5*time.Second)
+
+				_ = server.Shutdown(timeoutCtx)
+				closerTracer()
+
+				time.Sleep(1 * time.Second)
+				// close sql
+				database.CloseDB(database.MysqlDB)
+				cancelFunc()
+				chanExit <- true
+				return
+			case e := <-chanErr:
+				logrus.WithContext(ctx).Info("error server receive")
+				logrus.Error(e)
 				_ = server.Close()
+
+				timeoutCtx, cancelFunc := context.WithTimeout(ctx, 5*time.Second)
+				_ = server.Shutdown(timeoutCtx)
+				closerTracer()
+
+				// close sql
+				database.CloseDB(database.MysqlDB)
+
+				cancelFunc()
+				chanExit <- true
 				return
 			}
 		}
-	}(wg)
+	}()
 
-	wg.Add(1)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-
+	go func() {
 		logrus.Infof("running on port %d", config.AppPort())
 		if err := server.ListenAndServe(); err != nil {
-			logrus.Error(err)
+			chanErr <- err
 			return
 		}
-	}(wg)
+	}()
 
-	wg.Wait()
+	<-chanExit
+	logrus.Info("server exit🔴")
 }

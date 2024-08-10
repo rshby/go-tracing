@@ -33,3 +33,14 @@ func InitializeMysqlDatabase() (*gorm.DB, func()) {
 		logrus.Info("close database mysql")
 	}
 }
+
+func CloseDB(mysql *gorm.DB) {
+	if mysql != nil {
+		db, err := mysql.DB()
+		if err != nil {
+			logrus.Error(err)
+		}
+
+		_ = db.Close()
+	}
+}

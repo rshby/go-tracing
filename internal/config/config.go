@@ -79,3 +79,7 @@ func DatabaseDSN() string {
 
 	return dsn
 }
+
+func OtelExporter() string {
+	return GetEnv("OTEL_EXPORTER")
+}
