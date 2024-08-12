@@ -26,10 +26,11 @@ type OtelTrace struct {
 var (
 	OtelApp = &OtelTrace{}
 
-	RequestCount = prometheus2.NewCounter(prometheus2.CounterOpts{
+	RequestCount = prometheus2.NewCounterVec(prometheus2.CounterOpts{
 		Name: "http_request_go_tracing_count",
 		Help: "Total number of requset in services go tracing",
-	})
+	},
+		[]string{"url"})
 
 	RequestDuration = prometheus2.NewHistogram(prometheus2.HistogramOpts{
 		Name:        "http_request_go_tracing_duration",

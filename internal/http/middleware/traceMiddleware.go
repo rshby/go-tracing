@@ -12,7 +12,7 @@ import (
 func TraceMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// for metrics
-		otel.RequestCount.Inc()
+		otel.RequestCount.WithLabelValues("url", c.Request.RequestURI).Inc()
 		startTime := time.Now()
 
 		ctx := c.Request.Context()
