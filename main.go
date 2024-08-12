@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"go-tracing/database"
 	"go-tracing/internal/config"
@@ -32,6 +33,8 @@ func main() {
 
 	app := gin.Default()
 	app.Use(middleware.TraceMiddleware())
+
+	app.GET("/metrics", PromHandler())
 
 	// router
 	router.NewRouter(&app.RouterGroup)
@@ -63,8 +66,6 @@ func main() {
 
 				_ = server.Shutdown(timeoutCtx)
 				closerTracer()
-
-				time.Sleep(1 * time.Second)
 				// close sql
 				database.CloseDB(database.MysqlDB)
 				cancelFunc()
@@ -99,4 +100,11 @@ func main() {
 
 	<-chanExit
 	logrus.Info("server exit🔴")
+}
+
+func PromHandler() gin.HandlerFunc {
+	h := promhttp.Handler()
+	return func(c *gin.Context) {
+		h.ServeHTTP(c.Writer, c.Request)
+	}
 }

@@ -9,3 +9,15 @@ services:
       - 16686:16686
       - 4318:4318
       - 6831:6831
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    ports:
+      - 9090:9090
+
+  node-exporter:
+      image: prom/node-exporter
+      ports:
+        - 9100:9100
