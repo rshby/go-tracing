@@ -3,11 +3,13 @@ package otel
 import (
 	"context"
 	"encoding/json"
+	prometheus2 "github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go-tracing/internal/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	// "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -23,6 +25,18 @@ type OtelTrace struct {
 
 var (
 	OtelApp = &OtelTrace{}
+
+	RequestCount = prometheus2.NewCounter(prometheus2.CounterOpts{
+		Name: "http_request_go_tracing_count",
+		Help: "Total number of requset in services go tracing",
+	})
+
+	RequestDuration = prometheus2.NewHistogram(prometheus2.HistogramOpts{
+		Name:        "http_request_go_tracing_duration",
+		Help:        "Duration of request in services go tracing in seconds",
+		ConstLabels: nil,
+		Buckets:     prometheus2.LinearBuckets(0.001, 0.005, 10),
+	})
 )
 
 // NewTraceExporter is method to create exporter jaeger
@@ -50,6 +64,11 @@ func NewTraceProvider(exporter trace.SpanExporter, serviceName string) *trace.Tr
 		trace.WithSampler(trace.AlwaysSample()))
 
 	return traceProvider
+}
+
+// NewMetrixPrometheus is function to create and set metrics prometheus
+func NewMetrixPrometheus(ctx context.Context, name string) {
+	prometheus2.MustRegister(RequestCount, RequestDuration)
 }
 
 // InitTracerApp is method to

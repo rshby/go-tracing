@@ -6,10 +6,15 @@ import (
 	"go-tracing/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"time"
 )
 
 func TraceMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// for metrics
+		otel.RequestCount.Inc()
+		startTime := time.Now()
+
 		ctx := c.Request.Context()
 
 		// Check if the context already contains a span
@@ -45,5 +50,8 @@ func TraceMiddleware() gin.HandlerFunc {
 		span.SetAttributes(
 			attribute.Int("http.status_code", c.Writer.Status()),
 		)
+
+		elapseTime := time.Since(startTime)
+		otel.RequestDuration.Observe(elapseTime.Seconds())
 	}
 }
