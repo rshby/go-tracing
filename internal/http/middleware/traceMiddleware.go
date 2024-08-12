@@ -52,6 +52,6 @@ func TraceMiddleware() gin.HandlerFunc {
 		)
 
 		elapseTime := time.Since(startTime)
-		otel.RequestDuration.Observe(elapseTime.Seconds())
+		otel.RequestDuration.WithLabelValues(c.Request.RequestURI).Observe(elapseTime.Seconds())
 	}
 }

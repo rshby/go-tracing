@@ -32,12 +32,13 @@ var (
 	},
 		[]string{"url"})
 
-	RequestDuration = prometheus2.NewHistogram(prometheus2.HistogramOpts{
+	RequestDuration = prometheus2.NewHistogramVec(prometheus2.HistogramOpts{
 		Name:        "http_request_go_tracing_duration",
 		Help:        "Duration of request in services go tracing in seconds",
 		ConstLabels: nil,
 		Buckets:     prometheus2.LinearBuckets(0.001, 0.005, 10),
-	})
+	},
+		[]string{"url"})
 )
 
 // NewTraceExporter is method to create exporter jaeger
