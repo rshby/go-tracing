@@ -9,6 +9,10 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/prometheus"
+	metric2 "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/sdk/metric"
+
 	// "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -39,6 +43,9 @@ var (
 		Buckets:     prometheus2.LinearBuckets(0.001, 0.005, 10),
 	},
 		[]string{"url"})
+
+	ExporterPrometheus   metric.Reader
+	RequestMetricCounter metric2.Int64Counter
 )
 
 // NewTraceExporter is method to create exporter jaeger
@@ -109,4 +116,44 @@ func DumpContext(ctx context.Context) string {
 	md, _ := metadata.FromIncomingContext(ctx)
 	marshal, _ := json.Marshal(&md)
 	return string(marshal)
+}
+
+func CreatePrometheusExporter() metric.Reader {
+	exporter, err := prometheus.New()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	ExporterPrometheus = exporter
+	return ExporterPrometheus
+}
+
+func CreatePrometheusMetrixProvider(exp metric.Reader) *metric.MeterProvider {
+	provider := metric.NewMeterProvider(metric.WithReader(exp))
+	return provider
+}
+
+func InitiaizeMetricWithOtelPremetheus(ctx context.Context, serviceName string) func() {
+	// create exporter
+	exporter := CreatePrometheusExporter()
+
+	// create provider
+	provider := CreatePrometheusMetrixProvider(exporter)
+
+	// set global
+	otel.SetMeterProvider(provider)
+
+	// get meter
+	meter := otel.Meter(serviceName)
+
+	// create counter
+	var err error
+	RequestMetricCounter, err = meter.Int64Counter("request.total", metric2.WithDescription("number of total request http"))
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	return func() {
+		_ = provider.Shutdown(ctx)
+	}
 }
