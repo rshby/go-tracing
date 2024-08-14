@@ -8,6 +8,7 @@ import (
 	serviceInterfaces "go-tracing/internal/service/interfaces"
 	"go-tracing/internal/utils/helper"
 	"go-tracing/otel"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type CustomerController struct {
@@ -50,7 +51,7 @@ func (controller *CustomerController) GetByID(c *gin.Context) {
 
 	customer, httpError := controller.customerService.GetByID(ctx, id)
 	if httpError != nil {
-		//logger.Error(httpError)
+		span.SetStatus(codes.Error, httpError.Message)
 		span.RecordError(httpError)
 		httpresponse.ResponseError(c, httpError)
 		return

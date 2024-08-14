@@ -3,18 +3,16 @@ package otel
 import (
 	"context"
 	"encoding/json"
-	prometheus2 "github.com/prometheus/client_golang/prometheus"
+	clientGolangPrometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go-tracing/internal/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	metric2 "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/metric"
-
-	// "go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
@@ -30,19 +28,19 @@ type OtelTrace struct {
 var (
 	OtelApp = &OtelTrace{}
 
-	RequestCount = prometheus2.NewCounterVec(prometheus2.CounterOpts{
+	RequestCount = clientGolangPrometheus.NewCounterVec(clientGolangPrometheus.CounterOpts{
 		Name: "http_request_go_tracing_count",
 		Help: "Total number of requset in services go tracing",
 	},
-		[]string{"url"})
+		[]string{"url", "status_code"})
 
-	RequestDuration = prometheus2.NewHistogramVec(prometheus2.HistogramOpts{
+	RequestDuration = clientGolangPrometheus.NewHistogramVec(clientGolangPrometheus.HistogramOpts{
 		Name:        "http_request_go_tracing_duration",
 		Help:        "Duration of request in services go tracing in seconds",
 		ConstLabels: nil,
-		Buckets:     prometheus2.LinearBuckets(0.001, 0.005, 10),
+		//Buckets:     clientGolangPrometheus.LinearBuckets(0.001, 0.005, 10),
 	},
-		[]string{"url"})
+		[]string{"url", "status_code"})
 
 	ExporterPrometheus   metric.Reader
 	RequestMetricCounter metric2.Int64Counter
@@ -77,10 +75,10 @@ func NewTraceProvider(exporter trace.SpanExporter, serviceName string) *trace.Tr
 
 // NewMetrixPrometheus is function to create and set metrics prometheus
 func NewMetrixPrometheus(ctx context.Context, name string) {
-	prometheus2.MustRegister(RequestCount, RequestDuration)
+	clientGolangPrometheus.MustRegister(RequestCount, RequestDuration)
 }
 
-// InitTracerApp is method to
+// InitTracerApp is method to create tracer
 func InitTracerApp(ctx context.Context, serviceName string) (*trace.TracerProvider, func()) {
 	var exporter trace.SpanExporter
 	switch config.OtelExporter() {
@@ -98,13 +96,15 @@ func InitTracerApp(ctx context.Context, serviceName string) (*trace.TracerProvid
 		}
 	}
 
-	tracerProvideer := NewTraceProvider(exporter, serviceName)
-	otel.SetTracerProvider(tracerProvideer)
+	// create tracer provider
+	tracerProvider := NewTraceProvider(exporter, serviceName)
+	otel.SetTracerProvider(tracerProvider)
 
-	OtelApp = &OtelTrace{Trace: tracerProvideer.Tracer(serviceName)}
+	// assign tracer variable
+	OtelApp = &OtelTrace{Trace: tracerProvider.Tracer(serviceName)}
 
-	return tracerProvideer, func() {
-		_ = tracerProvideer.Shutdown(ctx)
+	return tracerProvider, func() {
+		_ = tracerProvider.Shutdown(ctx)
 	}
 }
 

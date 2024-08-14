@@ -11,8 +11,7 @@ import (
 
 func TraceMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// for metrics
-		otel.RequestCount.WithLabelValues(c.Request.RequestURI).Inc()
+
 		startTime := time.Now()
 
 		ctx := c.Request.Context()
@@ -43,6 +42,10 @@ func TraceMiddleware() gin.HandlerFunc {
 		// Replace the context in the request with the one containing the span
 		c.Request = c.Request.WithContext(ctx)
 
+		// catch response
+		customWriters := NewCustomeWritter(c.Writer)
+		c.Writer = customWriters
+
 		// Proceed with the request
 		c.Next()
 
@@ -51,7 +54,9 @@ func TraceMiddleware() gin.HandlerFunc {
 			attribute.Int("http.status_code", c.Writer.Status()),
 		)
 
+		// for metrics
+		otel.RequestCount.WithLabelValues(c.Request.RequestURI, fmt.Sprintf("%d", customWriters.Status())).Inc()
 		elapseTime := time.Since(startTime)
-		otel.RequestDuration.WithLabelValues(c.Request.RequestURI).Observe(elapseTime.Seconds())
+		otel.RequestDuration.WithLabelValues(c.Request.RequestURI, fmt.Sprintf("%d", customWriters.Status())).Observe(elapseTime.Seconds())
 	}
 }

@@ -34,7 +34,7 @@ func main() {
 	app := gin.Default()
 	app.Use(middleware.TraceMiddleware())
 
-	app.GET("/metrics", gin.WrapH(otel.ExporterPrometheus))
+	app.GET("/metrics", PromHandler())
 
 	// router
 	router.NewRouter(&app.RouterGroup)
