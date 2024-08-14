@@ -1,18 +1,18 @@
 package middleware
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"go-tracing/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
-	"time"
 )
 
 func TraceMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
-		startTime := time.Now()
+		//startTime := time.Now()
 
 		ctx := c.Request.Context()
 
@@ -43,7 +43,10 @@ func TraceMiddleware() gin.HandlerFunc {
 		c.Request = c.Request.WithContext(ctx)
 
 		// catch response
-		customWriters := NewCustomeWritter(c.Writer)
+		customWriters := &customWriter{
+			ResponseWriter: c.Writer,
+			Body:           &bytes.Buffer{},
+		}
 		c.Writer = customWriters
 
 		// Proceed with the request
@@ -51,12 +54,14 @@ func TraceMiddleware() gin.HandlerFunc {
 
 		// Set additional attributes based on the response
 		span.SetAttributes(
-			attribute.Int("http.status_code", c.Writer.Status()),
+			attribute.Int("http.status_code", customWriters.StatusCode),
+			attribute.String("http.response.body", customWriters.Body.String()),
 		)
 
 		// for metrics
-		otel.RequestCount.WithLabelValues(c.Request.RequestURI, fmt.Sprintf("%d", customWriters.Status())).Inc()
-		elapseTime := time.Since(startTime)
-		otel.RequestDuration.WithLabelValues(c.Request.RequestURI, fmt.Sprintf("%d", customWriters.Status())).Observe(elapseTime.Seconds())
+		//otel.RequestCount.WithLabelValues(c.Request.RequestURI, fmt.Sprintf("%d", customWriters.Status())).Inc()
+		//elapseTime := time.Since(startTime)
+		//otel.RequestDuration.WithLabelValues(c.Request.RequestURI, fmt.Sprintf("%d", customWriters.Status())).Observe(elapseTime.Seconds())
+		otel.RequestMetricCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("url", c.Request.RequestURI)))
 	}
 }

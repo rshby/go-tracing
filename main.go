@@ -25,7 +25,9 @@ func init() {
 
 func main() {
 	_, closerTracer := otel.InitTracerApp(context.Background(), "go-tracing")
-	otel.NewMetrixPrometheus(context.Background(), "go-tracing")
+	//otel.NewMetrixPrometheus(context.Background(), "go-tracing")
+	premetheusCloser := otel.InitiaizeMetricWithOtelPremetheus(context.Background(), "go-tracing")
+	defer premetheusCloser()
 
 	mysqlDB, mysqlCloser := database.InitializeMysqlDatabase()
 	defer mysqlCloser()

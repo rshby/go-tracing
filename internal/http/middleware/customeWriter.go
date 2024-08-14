@@ -6,18 +6,24 @@ import (
 )
 
 type customWriter struct {
+	StatusCode int
 	gin.ResponseWriter
-	body *bytes.Buffer
+	Body *bytes.Buffer
 }
 
 func NewCustomeWritter(r gin.ResponseWriter) *customWriter {
 	return &customWriter{
 		ResponseWriter: r,
-		body:           bytes.NewBufferString(""),
+		Body:           bytes.NewBufferString(""),
 	}
 }
 
-func (c *customWriter) Writer(b []byte) (int, error) {
-	c.body.Write(b)
+func (c *customWriter) Write(b []byte) (int, error) {
+	c.Body.Write(b)
 	return c.ResponseWriter.Write(b)
+}
+
+func (c *customWriter) WriteHeader(statusCode int) {
+	c.StatusCode = statusCode
+	c.ResponseWriter.WriteHeader(statusCode)
 }

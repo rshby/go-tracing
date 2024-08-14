@@ -148,7 +148,7 @@ func InitiaizeMetricWithOtelPremetheus(ctx context.Context, serviceName string) 
 
 	// create counter
 	var err error
-	RequestMetricCounter, err = meter.Int64Counter("request.total", metric2.WithDescription("number of total request http"))
+	RequestMetricCounter, err = meter.Int64Counter("request_total_reo_service", metric2.WithDescription("number of total request http"))
 	if err != nil {
 		logrus.Fatal(err)
 	}
