@@ -6,28 +6,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"go-tracing/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/trace"
 )
 
 func TraceMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		//startTime := time.Now()
-
 		ctx := c.Request.Context()
-
-		// Check if the context already contains a span
-		span := trace.SpanFromContext(ctx)
-		if span.SpanContext().IsValid() {
-			// If there is already a valid span, proceed with it
-			c.Request = c.Request.WithContext(ctx)
-			c.Next()
-			return
-		}
-
-		// Start a new trace if no valid span is found
 		url := fmt.Sprintf("[%s] %s", c.Request.Method, c.Request.RequestURI)
-		ctx, span = otel.OtelApp.Start(ctx, url)
+		ctx, span := otel.OtelApp.Start(ctx, url)
 
 		// Add attributes to the span
 		span.SetAttributes(
@@ -55,13 +40,10 @@ func TraceMiddleware() gin.HandlerFunc {
 		// Set additional attributes based on the response
 		span.SetAttributes(
 			attribute.Int("http.status_code", customWriters.StatusCode),
-			attribute.String("http.response.body", customWriters.Body.String()),
 		)
 
-		// for metrics
-		//otel.RequestCount.WithLabelValues(c.Request.RequestURI, fmt.Sprintf("%d", customWriters.Status())).Inc()
-		//elapseTime := time.Since(startTime)
-		//otel.RequestDuration.WithLabelValues(c.Request.RequestURI, fmt.Sprintf("%d", customWriters.Status())).Observe(elapseTime.Seconds())
-		otel.RequestMetricCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("url", c.Request.RequestURI)))
+		if customWriters.Body.String() != "" {
+			span.SetAttributes(attribute.String("http.response_body", customWriters.Body.String()))
+		}
 	}
 }

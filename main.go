@@ -25,7 +25,6 @@ func init() {
 
 func main() {
 	_, closerTracer := otel.InitTracerApp(context.Background(), "go-tracing")
-	//otel.NewMetrixPrometheus(context.Background(), "go-tracing")
 	premetheusCloser := otel.InitiaizeMetricWithOtelPremetheus(context.Background(), "go-tracing")
 	defer premetheusCloser()
 
@@ -34,9 +33,8 @@ func main() {
 	logrus.Info(mysqlDB)
 
 	app := gin.Default()
-	app.Use(middleware.TraceMiddleware())
-
 	app.GET("/metrics", PromHandler())
+	app.Use(middleware.TraceMiddleware())
 
 	// router
 	router.NewRouter(&app.RouterGroup)

@@ -7,11 +7,11 @@ import (
 	"github.com/sirupsen/logrus"
 	"go-tracing/internal/config"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	metric2 "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -42,7 +42,7 @@ var (
 	},
 		[]string{"url", "status_code"})
 
-	ExporterPrometheus   metric.Reader
+	ExporterPrometheus   *prometheus.Exporter
 	RequestMetricCounter metric2.Int64Counter
 )
 
@@ -78,8 +78,16 @@ func NewMetrixPrometheus(ctx context.Context, name string) {
 	clientGolangPrometheus.MustRegister(RequestCount, RequestDuration)
 }
 
+func NewPropagator() propagation.TextMapPropagator {
+	return propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
+}
+
 // InitTracerApp is method to create tracer
 func InitTracerApp(ctx context.Context, serviceName string) (*trace.TracerProvider, func()) {
+	propagator := NewPropagator()
+	otel.SetTextMapPropagator(propagator)
+
+	// create tracer exporter
 	var exporter trace.SpanExporter
 	switch config.OtelExporter() {
 	case "console":
@@ -109,7 +117,7 @@ func InitTracerApp(ctx context.Context, serviceName string) (*trace.TracerProvid
 }
 
 func (o *OtelTrace) Start(ctx context.Context, name string) (context.Context, otlTrace.Span) {
-	return o.Trace.Start(ctx, name, otlTrace.WithAttributes(attribute.String("context", DumpContext(ctx))))
+	return o.Trace.Start(ctx, name)
 }
 
 func DumpContext(ctx context.Context) string {
@@ -118,7 +126,7 @@ func DumpContext(ctx context.Context) string {
 	return string(marshal)
 }
 
-func CreatePrometheusExporter() metric.Reader {
+func CreatePrometheusExporter() *prometheus.Exporter {
 	exporter, err := prometheus.New()
 	if err != nil {
 		logrus.Fatal(err)
@@ -148,7 +156,7 @@ func InitiaizeMetricWithOtelPremetheus(ctx context.Context, serviceName string) 
 
 	// create counter
 	var err error
-	RequestMetricCounter, err = meter.Int64Counter("request_total_reo_service", metric2.WithDescription("number of total request http"))
+	RequestMetricCounter, err = meter.Int64Counter("request.total.reo.service", metric2.WithDescription("number of total request http"))
 	if err != nil {
 		logrus.Fatal(err)
 	}
